@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import Link from 'next/link'
 
 export default function Home() {
   const [schedules, setSchedules] = useState<any[]>([])
@@ -82,9 +83,11 @@ export default function Home() {
       </section>
 
       {/* Floating Action Button (Tombol Tambah) */}
-      <button className="fixed bottom-6 right-6 bg-yellow-400 text-black p-4 rounded-full shadow-xl font-bold hover:bg-yellow-300 transition-all">
-        + NEW
-      </button>
+     <Link href="/new">
+  <button className="fixed bottom-6 right-6 bg-yellow-400 text-black w-14 h-14 rounded-full shadow-xl font-bold text-2xl flex items-center justify-center hover:bg-yellow-300 transition-all z-50">
+    +
+  </button>
+</Link>
     </main>
   )
 }
