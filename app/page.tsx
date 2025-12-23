@@ -2,61 +2,80 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function Home() {
+  const router = useRouter()
   const [schedules, setSchedules] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
-  // Fungsi untuk mengambil data jadwal dari Supabase
   useEffect(() => {
-    const fetchSchedules = async () => {
-      // Ambil data dari tabel 'content_schedule'
+    // Cek apakah user sudah login?
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        // Belum login -> Tendang ke halaman login
+        router.push('/login')
+      } else {
+        // Sudah login -> Boleh masuk
+        setIsAuthenticated(true)
+        fetchData()
+      }
+    }
+
+    const fetchData = async () => {
       const { data, error } = await supabase
         .from('content_schedule')
         .select('*')
         .order('schedule_date', { ascending: true })
-
+      
       if (error) console.log('Error:', error)
       else setSchedules(data || [])
-      setLoading(false)
     }
 
-    fetchSchedules()
-  }, [])
+    checkUser()
+  }, [router])
+
+  // Tampilkan layar kosong hitam sebentar saat loading
+  if (!isAuthenticated) {
+    return <main className="min-h-screen bg-gray-900 text-white p-6"></main>
+  }
 
   return (
-    <main className="min-h-screen bg-gray-900 text-white p-4">
-      {/* Header */}
-      <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-yellow-400">GYM CONTENT 🚀</h1>
-        <p className="text-gray-400 text-sm mt-2">Manage your gains & content.</p>
+    <main className="min-h-screen bg-gray-900 text-white p-6 pb-24 font-sans">
+      <header className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-extrabold text-yellow-400 tracking-tight">GYM CONTENT 🚀</h1>
+          <p className="text-gray-400 text-xs mt-1">Welcome back, Coach!</p>
+        </div>
+        {/* Tombol Logout */}
+        <button 
+          onClick={async () => {
+            await supabase.auth.signOut()
+            router.push('/login')
+          }}
+          className="text-xs text-red-400 hover:text-red-300 underline"
+        >
+          Logout
+        </button>
       </header>
 
-      {/* Quick Stats / Menu */}
       <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 text-center">
-          <h2 className="text-2xl font-bold">0</h2>
-          <p className="text-xs text-gray-400">Ideas Drafted</p>
+        <div className="bg-gray-800 p-5 rounded-2xl border border-gray-700 shadow-lg">
+          <h2 className="text-3xl font-bold text-white">{schedules.length}</h2>
+          <p className="text-gray-400 text-xs mt-1">Ideas Drafted</p>
         </div>
-        <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 text-center">
-          <h2 className="text-2xl font-bold">0</h2>
-          <p className="text-xs text-gray-400">PR Broken</p>
+        <div className="bg-gray-800 p-5 rounded-2xl border border-gray-700 shadow-lg opacity-50">
+          <h2 className="text-3xl font-bold text-white">0</h2>
+          <p className="text-gray-400 text-xs mt-1">PR Broken</p>
         </div>
       </div>
 
-      {/* Bagian Jadwal */}
-      <section>
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          📅 Jadwal Konten
-        </h2>
-
-        {loading ? (
-          <p className="text-center text-gray-500 animate-pulse">Loading data...</p>
-        ) : schedules.length === 0 ? (
-          <div className="text-center p-8 bg-gray-800 rounded-xl border border-dashed border-gray-600">
-            <p className="text-gray-400">Belum ada jadwal.</p>
-            <p className="text-xs text-gray-500 mt-1">Tambahkan lewat database dulu.</p>
-          </div>
+      <div className="space-y-4">
+        {schedules.length === 0 ? (
+           <div className="text-center p-8 bg-gray-800 rounded-xl border border-dashed border-gray-600">
+             <p className="text-gray-400">Belum ada jadwal.</p>
+           </div>
         ) : (
           <div className="space-y-4">
             {schedules.map((item) => (
@@ -80,14 +99,11 @@ export default function Home() {
             ))}
           </div>
         )}
-      </section>
+      </div>
 
-      {/* Floating Action Button (Tombol Tambah) */}
-     <Link href="/new">
-  <button className="fixed bottom-6 right-6 bg-yellow-400 text-black w-14 h-14 rounded-full shadow-xl font-bold text-2xl flex items-center justify-center hover:bg-yellow-300 transition-all z-50">
-    +
-  </button>
-</Link>
+      <Link href="/new" className="fixed bottom-6 right-6 bg-yellow-400 text-black w-auto px-6 h-14 rounded-full shadow-xl font-bold text-lg flex items-center justify-center hover:bg-yellow-300 transition-all z-50 gap-2 cursor-pointer">
+        <span>+ NEW</span>
+      </Link>
     </main>
   )
 }
