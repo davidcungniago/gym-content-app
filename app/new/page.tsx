@@ -14,7 +14,7 @@ export default function NewPost() {
     equipment: ''
   })
 
-  // Cek login juga di sini (Security tambahan)
+  // Cek Login
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
@@ -27,7 +27,6 @@ export default function NewPost() {
     e.preventDefault()
     setLoading(true)
 
-    // Langsung simpan ke database (Tanpa tanya PIN lagi)
     const { error } = await supabase.from('content_schedule').insert([
       {
         schedule_date: formData.date,
@@ -73,8 +72,10 @@ export default function NewPost() {
               required
             >
               <option value="">Pilih Otot...</option>
+              {/* Opsi Baru ditambahkan di sini */}
               <option value="Chest">Chest (Dada)</option>
               <option value="Back">Back (Punggung)</option>
+              <option value="Chest & Back">Chest & Back (Dada & Punggung)</option>
               <option value="Legs">Legs (Kaki)</option>
               <option value="Shoulders">Shoulders (Bahu)</option>
               <option value="Arms">Arms (Tangan)</option>
