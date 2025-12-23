@@ -1,22 +1,34 @@
 'use client'
 import { useState } from 'react'
-import { supabase } from '@/lib/supabaseClient' // Pastikan path ini sesuai
+import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 
 export default function NewPost() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0], // Default hari ini
+    date: new Date().toISOString().split('T')[0],
     muscle: '',
     topic: '',
     script: '',
     equipment: ''
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Perbaikan tipe data di sini (pakai 'any' biar aman dan tidak merah)
+  const handleSubmit = async (e: any) => {
     e.preventDefault()
     setLoading(true)
+
+    // --- 🔒 BAGIAN PENGAMAN (PIN) ---
+    const pin = prompt("Masukkan PIN Rahasia untuk menyimpan:")
+    
+    // PIN Rahasia: 12345 (Bisa diganti)
+    if (pin !== "12345") {
+      alert("❌ PIN SALAH! Data tidak disimpan.")
+      setLoading(false)
+      return 
+    }
+    // --------------------------------
 
     // Kirim data ke Supabase
     const { error } = await supabase.from('content_schedule').insert([
@@ -34,7 +46,6 @@ export default function NewPost() {
       alert('Gagal simpan: ' + error.message)
       setLoading(false)
     } else {
-      // Jika sukses, kembali ke dashboard
       router.push('/')
       router.refresh()
     }
