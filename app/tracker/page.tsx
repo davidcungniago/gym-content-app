@@ -504,33 +504,40 @@ export default function WeightTrackerPage() {
                     {/* LIST LOGS */}
                     <div className="space-y-2">
                       <h3 className="text-xs text-gray-500 font-bold uppercase">Riwayat Hari Ini</h3>
-                      {logs.map((log) => {
-                        const isLogCardio = Object.keys(EXERCISE_CONFIG['Cardio'] || {}).includes(log.exercise_name.split(' (')[0])
-                        const isBeingEdited = log.id === editingLogId
-                        
-                        return (
-                          <div key={log.id} className={cn("flex justify-between items-center p-3 rounded-lg border transition-all", isBeingEdited ? "bg-blue-900/20 border-blue-500" : "bg-gray-800 border-gray-700 hover:border-gray-600")}>
-                            <div>
-                              <div className="font-bold text-sm text-white">{log.exercise_name}</div>
-                              <div className="text-xs text-gray-400 mt-0.5">
-                                  {isLogCardio ? (
-                                    <span className="text-blue-400 font-bold">⏱️ {log.reps} Menit</span>
-                                  ) : (
-                                    <><span className="text-yellow-500 font-bold">{log.weight_kg}kg</span> x {log.reps} reps</>
-                                  )}
-                              </div>
-                            </div>
-                            <div className="flex gap-1">
-                               <button onClick={() => handleEditLogClick(log)} className="w-8 h-8 rounded flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700">
-                                 ✏️
-                               </button>
-                               <button onClick={() => handleDeleteLog(log.id)} className="w-8 h-8 rounded flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-gray-700">
-                                 ✕
-                               </button>
-                            </div>
-                          </div>
-                        )
-                      })}
+                     {logs.map((log) => {
+  // Cek apakah ini cardio berdasarkan Config
+  const exerciseNameOnly = log.exercise_name.split(' (')[0]
+  const isCardioExercise = Object.keys(EXERCISE_CONFIG['Cardio'] || {}).includes(exerciseNameOnly)
+  
+  return (
+    <div key={log.id} className="flex justify-between items-center p-3 rounded-lg border bg-gray-800 border-gray-700 hover:border-gray-600 transition-all">
+      <div className="flex-1 pr-4">
+        <div className="font-bold text-sm text-white break-words">{log.exercise_name}</div>
+        <div className="text-xs mt-1">
+            {isCardioExercise ? (
+              <span className="text-blue-400 font-bold bg-blue-900/20 px-1.5 py-0.5 rounded border border-blue-500/30">
+                 {/* Jika ada speed (disimpan di weight_kg) tampilkan speed, jika 0 tampilkan ikon saja */}
+                 {log.weight_kg > 0 ? `⚡ ${log.weight_kg} km/h` : '🏃'} 
+                 <span className="text-gray-400 mx-1">•</span> 
+                 ⏱️ {log.reps} Min
+              </span>
+            ) : (
+              <span className="text-yellow-500 font-bold bg-yellow-900/20 px-1.5 py-0.5 rounded border border-yellow-500/30">
+                {log.weight_kg}kg <span className="text-gray-400 font-normal">x</span> {log.reps} reps
+              </span>
+            )}
+        </div>
+      </div>
+      
+      <button 
+         onClick={() => handleDeleteLog(log.id)} 
+         className="w-8 h-8 rounded flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-gray-700 transition-colors"
+      >
+        ✕
+      </button>
+    </div>
+  )
+})}
                       {logs.length === 0 && <div className="text-center text-gray-600 text-xs italic py-4">Belum ada data latihan.</div>}
                     </div>
                   </>
