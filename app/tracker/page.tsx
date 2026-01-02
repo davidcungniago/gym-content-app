@@ -504,20 +504,31 @@ export default function WeightTrackerPage() {
                     {/* LIST LOGS */}
                     <div className="space-y-2">
                       <h3 className="text-xs text-gray-500 font-bold uppercase">Riwayat Hari Ini</h3>
-                     {logs.map((log) => {
-  // Cek apakah ini cardio berdasarkan Config
+                    {logs.map((log) => {
+  // 1. Cek apakah ini cardio (berdasarkan Config)
   const exerciseNameOnly = log.exercise_name.split(' (')[0]
   const isCardioExercise = Object.keys(EXERCISE_CONFIG['Cardio'] || {}).includes(exerciseNameOnly)
   
+  // 2. Cek apakah user memilih input 'Pace' saat itu (disimpan di nama latihan)
+  const isPace = log.exercise_name.includes('Pace')
+
   return (
     <div key={log.id} className="flex justify-between items-center p-3 rounded-lg border bg-gray-800 border-gray-700 hover:border-gray-600 transition-all">
       <div className="flex-1 pr-4">
         <div className="font-bold text-sm text-white break-words">{log.exercise_name}</div>
         <div className="text-xs mt-1">
             {isCardioExercise ? (
-              <span className="text-blue-400 font-bold bg-blue-900/20 px-1.5 py-0.5 rounded border border-blue-500/30">
-                 {/* Jika ada speed (disimpan di weight_kg) tampilkan speed, jika 0 tampilkan ikon saja */}
-                 {log.weight_kg > 0 ? `⚡ ${log.weight_kg} km/h` : '🏃'} 
+              <span className={cn(
+                "font-bold px-1.5 py-0.5 rounded border",
+                isPace 
+                  ? "text-green-400 bg-green-900/20 border-green-500/30" 
+                  : "text-blue-400 bg-blue-900/20 border-blue-500/30"
+              )}>
+                 {/* Jika input > 0 tampilkan angka, jika 0 tampilkan ikon saja */}
+                 {log.weight_kg > 0 
+                    ? (isPace ? `🏃 ${log.weight_kg} min/km` : `⚡ ${log.weight_kg} km/h`)
+                    : (isPace ? '🏃 Pace' : '⚡ Speed')
+                 } 
                  <span className="text-gray-400 mx-1">•</span> 
                  ⏱️ {log.reps} Min
               </span>
@@ -532,6 +543,7 @@ export default function WeightTrackerPage() {
       <button 
          onClick={() => handleDeleteLog(log.id)} 
          className="w-8 h-8 rounded flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-gray-700 transition-colors"
+         title="Hapus set ini"
       >
         ✕
       </button>

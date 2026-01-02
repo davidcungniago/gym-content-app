@@ -82,11 +82,12 @@ export default function NewWorkoutPage() {
   const [formMode, setFormMode] = useState('')
   const [formSide, setFormSide] = useState('')
   
-  // Kita gunakan state ini fleksibel: 
-  // Jika Cardio -> formWeight = Speed, formReps = Durasi
-  // Jika Lifting -> formWeight = Beban, formReps = Reps
+  // State Input Angka
   const [formWeight, setFormWeight] = useState('') 
   const [formReps, setFormReps] = useState('')
+  
+  // State Khusus Cardio (Speed vs Pace)
+  const [cardioMetric, setCardioMetric] = useState('Speed') // 'Speed' | 'Pace'
 
   useEffect(() => {
     checkSession()
@@ -162,34 +163,38 @@ export default function NewWorkoutPage() {
       return
     }
 
+    // Cek apakah cardio
+    const isCardioLog = Object.keys(EXERCISE_CONFIG['Cardio']).includes(formMain)
+
     // Susun Nama Latihan
     let details = []
     if (formType) details.push(formType)
     if (formGrip) details.push(formGrip)
     if (formMode) details.push(formMode)
     if ((formMode === 'Single' || formType === 'Single') && formSide) details.push(formSide)
+    
+    // Jika Cardio, tambahkan info Metric (Speed/Pace) ke nama agar tersimpan
+    if (isCardioLog) {
+      details.push(cardioMetric) 
+    }
 
     const fullName = details.length > 0 ? `${formMain} (${details.join(', ')})` : formMain
     
-    // --- FEATURE CARDIO SPEED ---
-    // Simpan Speed ke kolom weight_kg
     const valWeight = parseFloat(formWeight) || 0
     const valReps = parseInt(formReps) || 0
 
     const { error } = await supabase.from('weight_logs').insert([{
       schedule_id: activeId,
       exercise_name: fullName,
-      weight_kg: valWeight, // Disini kita simpan Speed jika Cardio
-      reps: valReps,        // Disini kita simpan Menit jika Cardio
+      weight_kg: valWeight, // Disini kita simpan Speed/Pace/Berat
+      reps: valReps,        // Disini kita simpan Menit/Reps
       date: date
     }])
 
     if (!error) {
-      // Reset Form
+      // Reset Form Partial (Keep formMain & Metric for ease of use)
       setFormType(''); setFormGrip(''); setFormMode(''); setFormSide(''); 
-      setFormWeight(''); // Reset Speed/Weight
-      // formReps tidak direset agar user bisa input set berikutnya dengan repetisi/durasi sama dengan cepat
-      // formMain tidak direset agar user bisa input set berikutnya
+      setFormWeight('');
       fetchLogs(activeId)
     }
     setLoading(false)
@@ -200,12 +205,9 @@ export default function NewWorkoutPage() {
     if (scheduleId) fetchLogs(scheduleId)
   }
 
-  // Helper untuk mendapatkan list latihan gabungan dari otot yang dipilih
   const getCombinedExercises = () => {
     let combined: any = {}
-    // Jika tidak ada otot dipilih tapi ada cardio di input manual, tampilkan cardio
     const musclesToUse = muscles.length > 0 ? muscles : MUSCLE_OPTIONS
-    
     musclesToUse.forEach(m => {
       if (EXERCISE_CONFIG[m]) {
         combined = { ...combined, ...EXERCISE_CONFIG[m] }
@@ -248,7 +250,7 @@ export default function NewWorkoutPage() {
            </div>
         </div>
 
-        {/* PILIH OTOT (Toggle) */}
+        {/* PILIH OTOT */}
         <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
           <div className="flex justify-between items-center mb-3">
              <label className="text-xs text-gray-500 uppercase font-bold">Target Otot</label>
@@ -280,9 +282,14 @@ export default function NewWorkoutPage() {
         {/* FORM INPUT SET */}
         {!isRest && (
           <form onSubmit={handleAddLog} className="bg-gray-900 p-5 rounded-xl border border-gray-800 space-y-4 shadow-xl">
-             <div className="flex justify-between">
+             <div className="flex justify-between items-center">
                 <h3 className="text-sm font-bold text-white">Tambah Set</h3>
-                {isCardio && <span className="text-[10px] bg-blue-900/50 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">Mode Cardio 🏃</span>}
+                {isCardio && (
+                  <div className="flex bg-gray-800 rounded-lg p-0.5 border border-gray-700">
+                     <button type="button" onClick={() => setCardioMetric('Speed')} className={`px-3 py-1 text-[10px] font-bold rounded ${cardioMetric === 'Speed' ? 'bg-blue-600 text-white' : 'text-gray-400'}`}>Speed</button>
+                     <button type="button" onClick={() => setCardioMetric('Pace')} className={`px-3 py-1 text-[10px] font-bold rounded ${cardioMetric === 'Pace' ? 'bg-green-600 text-white' : 'text-gray-400'}`}>Pace</button>
+                  </div>
+                )}
              </div>
 
              {/* Dropdown Latihan */}
@@ -330,25 +337,29 @@ export default function NewWorkoutPage() {
                </div>
              )}
 
-             {/* INPUT DATA (BERAT/SPEED & REPS/WAKTU) */}
+             {/* INPUT DATA (DINAMIS) */}
              <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-end">
                
-               {/* KOLOM 1: BERAT atau SPEED */}
+               {/* KOLOM 1: BERAT / SPEED / PACE */}
                <div className="relative">
                  <label className="text-[10px] text-gray-500 font-bold ml-1 mb-1 block">
-                    {isCardio ? "SPEED (Km/h)" : "BERAT (Kg)"}
+                    {isCardio ? (cardioMetric === 'Speed' ? "SPEED (Km/h)" : "PACE (Min/km)") : "BERAT (Kg)"}
                  </label>
                  <input 
                    type="number" 
-                   step={isCardio ? "0.1" : "1"} // Izinkan desimal untuk speed (misal 3.5)
+                   step={isCardio ? "0.01" : "1"} // Izinkan desimal
                    placeholder="0" 
                    value={formWeight} 
                    onChange={e => setFormWeight(e.target.value)} 
-                   className={`w-full bg-gray-950 border rounded-lg p-3 text-center font-bold outline-none focus:ring-1 ${isCardio ? 'border-blue-500 text-blue-400 focus:ring-blue-500' : 'border-gray-700 focus:ring-yellow-500'}`}
+                   className={`w-full bg-gray-950 border rounded-lg p-3 text-center font-bold outline-none focus:ring-1 ${
+                     isCardio 
+                       ? (cardioMetric === 'Speed' ? 'border-blue-500 text-blue-400 focus:ring-blue-500' : 'border-green-500 text-green-400 focus:ring-green-500')
+                       : 'border-gray-700 focus:ring-yellow-500'
+                   }`}
                  />
                </div>
 
-               {/* KOLOM 2: REPS atau MENIT */}
+               {/* KOLOM 2: REPS / DURASI */}
                <div className="relative">
                  <label className="text-[10px] text-gray-500 font-bold ml-1 mb-1 block">
                     {isCardio ? "DURASI (Min)" : "REPS"}
@@ -367,7 +378,10 @@ export default function NewWorkoutPage() {
                <button 
                  type="submit" 
                  disabled={loading}
-                 className={`h-[46px] w-[50px] rounded-lg font-bold text-xl flex items-center justify-center transition-transform active:scale-95 ${loading ? 'bg-gray-700' : (isCardio ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-yellow-500 hover:bg-yellow-400 text-black')}`}
+                 className={`h-[46px] w-[50px] rounded-lg font-bold text-xl flex items-center justify-center transition-transform active:scale-95 ${
+                   loading ? 'bg-gray-700' : 
+                   (isCardio ? (cardioMetric === 'Speed' ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white') : 'bg-yellow-500 hover:bg-yellow-400 text-black')
+                 }`}
                >
                  {loading ? '...' : '+'}
                </button>
@@ -378,23 +392,22 @@ export default function NewWorkoutPage() {
         {/* LIST PREVIEW HARI INI */}
         <div className="space-y-2 pb-10">
           {logs.map((log, idx) => {
-            // Deteksi Cardio dari Nama Latihan untuk display list
-            const isLogCardio = Object.keys(EXERCISE_CONFIG['Cardio']).includes(log.exercise_name.split(' (')[0])
+            const exerciseNameOnly = log.exercise_name.split(' (')[0]
+            const isLogCardio = Object.keys(EXERCISE_CONFIG['Cardio']).includes(exerciseNameOnly)
+            const isPace = log.exercise_name.includes('Pace')
 
             return (
               <div key={log.id} className="flex justify-between items-center bg-gray-900 border border-gray-800 p-3 rounded-lg animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex gap-3 items-center">
                    <span className="text-xs text-gray-600 font-mono">#{idx + 1}</span>
                    <div>
-                      <div className="text-sm font-bold text-white">{log.exercise_name}</div>
+                      <div className="text-sm font-bold text-white break-words">{log.exercise_name}</div>
                       <div className="text-xs mt-1">
                         {isLogCardio ? (
-                           // Display khusus Cardio
-                           <span className="text-blue-400 font-bold">
-                             ⚡ {log.weight_kg > 0 ? `${log.weight_kg} km/h` : 'Manual'} &nbsp; • &nbsp; ⏱️ {log.reps} Min
+                           <span className={isPace ? "text-green-400 font-bold" : "text-blue-400 font-bold"}>
+                             {isPace ? "🏃" : "⚡"} {log.weight_kg} {isPace ? "min/km" : "km/h"} &nbsp; • &nbsp; ⏱️ {log.reps} Min
                            </span>
                         ) : (
-                           // Display Lifting
                            <span className="text-yellow-500">
                              {log.weight_kg}kg <span className="text-gray-500">x</span> {log.reps} reps
                            </span>
