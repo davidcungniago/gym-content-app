@@ -14,32 +14,45 @@ import { twMerge } from 'tailwind-merge'
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
 
 // --- CONFIG OPSI LATIHAN (LENGKAP) ---
+// Pastikan nama key di sini SAMA PERSIS dengan opsi di 'app/new/page.tsx'
 const EXERCISE_CONFIG: any = {
   'Back': {
     'Row': { types: ['Cable', 'Machine'], grips: ['High', 'Width'], modes: ['Single', 'Double'] },
     'Lat Pulldown': { types: ['Single', 'Bar'], grips: [], modes: [] }, 
     'Rear Delt Fly': { types: ['Machine', 'Cable'], grips: [], modes: ['Single', 'Double'] },
-    'Deadlift': { types: ['Conventional', 'Sumo'], grips: [], modes: [] }
+    'Deadlift': { types: ['Conventional', 'Sumo'], grips: [], modes: [] },
+    'Pull Up': { types: ['Bodyweight', 'Weighted'], grips: [], modes: [] }
   },
   'Chest': {
     'Incline Press': { types: ['Machine', 'Smith', 'Dumbbell'], grips: [], modes: [] },
     'Chest Fly': { types: ['Machine', 'Cable'], grips: ['High', 'Low'], modes: [] },
-    'Bench Press': { types: ['Barbell', 'Dumbbell', 'Smith'], grips: [], modes: [] }
+    'Bench Press': { types: ['Barbell', 'Dumbbell', 'Smith'], grips: [], modes: [] },
+    'Push Up': { types: [], grips: [], modes: [] }
   },
   'Legs': {
-    'Squat': { types: ['Hack Squat', 'Free Weight'], grips: [], modes: [] },
+    'Squat': { types: ['Hack Squat', 'Free Weight', 'Goblet'], grips: [], modes: [] },
     'Leg Press': { types: [], grips: [], modes: ['Single', 'Double'] },
     'Leg Extension': { types: [], grips: [], modes: ['Single', 'Double'] },
-    'Leg Curl': { types: [], grips: [], modes: ['Single', 'Double'] }
+    'Leg Curl': { types: [], grips: [], modes: ['Single', 'Double'] },
+    'Calf Raise': { types: ['Standing', 'Seated'], grips: [], modes: [] }
   },
   'Shoulders': {
     'Lateral Raise': { types: ['Machine', 'Cable', 'Free Weight'], grips: [], modes: ['Single', 'Double'] },
-    'Shoulder Press': { types: ['Machine', 'Free Weight', 'Smith'], grips: [], modes: [] }
+    'Shoulder Press': { types: ['Machine', 'Free Weight', 'Smith'], grips: [], modes: [] },
+    'Front Raise': { types: ['Dumbbell', 'Cable'], grips: [], modes: [] }
   },
   'Arms': {
     'Bicep Curl': { types: ['Free Weight', 'Cable'], grips: [], modes: ['Single', 'Double'] },
     'Tricep Pushdown': { types: [], grips: [], modes: ['Single', 'Double'] },
-    'Preacher Curl': { types: ['Machine', 'Free Weight'], grips: [], modes: [] }
+    'Preacher Curl': { types: ['Machine', 'Free Weight'], grips: [], modes: [] },
+    'Hammer Curl': { types: ['Dumbbell', 'Cable'], grips: [], modes: [] },
+    'Skullcrusher': { types: ['Barbell', 'Dumbbell'], grips: [], modes: [] }
+  },
+  'Cardio / Abs': {
+    'Treadmill': { types: [], grips: [], modes: [] },
+    'Plank': { types: [], grips: [], modes: [] },
+    'Crunches': { types: [], grips: [], modes: [] },
+    'Leg Raise': { types: [], grips: [], modes: [] }
   }
 }
 
@@ -53,19 +66,23 @@ export default function WeightTrackerPage() {
   const [selectedData, setSelectedData] = useState<any>(null)
   const [logs, setLogs] = useState<any[]>([])
   
+  // State Parsing Otot
+  const [targetMuscles, setTargetMuscles] = useState<string[]>([])
+  const [combinedExercises, setCombinedExercises] = useState<any>({})
+
   // State Form Input
   const [formMain, setFormMain] = useState('')
   const [formType, setFormType] = useState('')
   const [formGrip, setFormGrip] = useState('')
   const [formMode, setFormMode] = useState('')
-  const [formSide, setFormSide] = useState('') // Left/Right
+  const [formSide, setFormSide] = useState('') 
   const [formWeight, setFormWeight] = useState('')
   const [formReps, setFormReps] = useState('')
   
   const [isLogLoading, setIsLogLoading] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
-  // --- CEK LOGIN & AMBIL DATA ---
+  // --- 1. INIT & FETCH ---
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession()
@@ -85,23 +102,50 @@ export default function WeightTrackerPage() {
     if (data) setSchedules(data)
   }
 
-  // --- SAAT TANGGAL DIKLIK ---
+  // --- 2. HANDLE CLICK DATE ---
   const onDateClick = (date: Date) => {
     const data = schedules.find(s => isSameDay(new Date(s.schedule_date), date))
     setSelectedDate(date)
     setSelectedData(data || null)
     
-    // Reset form
-    setFormMain('')
-    setFormType('')
-    setFormGrip('')
-    setFormMode('')
-    setFormSide('')
-    setFormWeight('')
-    setFormReps('')
+    // Reset Form
+    setFormMain(''); setFormType(''); setFormGrip(''); setFormMode(''); setFormSide(''); setFormWeight(''); setFormReps('');
 
-    if (data) fetchLogs(data.id)
-    else setLogs([])
+    if (data) {
+      // --- LOGIC PARSING MULTIPLE MUSCLES ---
+      let parsedMuscles: string[] = []
+      
+      try {
+        // Coba parse kalau formatnya JSON (misal: '["Back","Chest"]')
+        if (data.muscle_group.startsWith('[')) {
+          parsedMuscles = JSON.parse(data.muscle_group)
+        } else {
+          // Kalau format lama (cuma string biasa "Back")
+          parsedMuscles = [data.muscle_group]
+        }
+      } catch (e) {
+        parsedMuscles = [data.muscle_group]
+      }
+      
+      setTargetMuscles(parsedMuscles)
+
+      // --- LOGIC MENGGABUNGKAN LATIHAN ---
+      // Kita loop semua otot yang dipilih, lalu gabungkan semua opsinya jadi satu list besar
+      let mergedExercises: any = {}
+      parsedMuscles.forEach(muscle => {
+        const config = EXERCISE_CONFIG[muscle]
+        if (config) {
+          mergedExercises = { ...mergedExercises, ...config }
+        }
+      })
+      setCombinedExercises(mergedExercises)
+
+      fetchLogs(data.id)
+    } else {
+      setLogs([])
+      setTargetMuscles([])
+      setCombinedExercises({})
+    }
   }
 
   const fetchLogs = async (scheduleId: string) => {
@@ -110,36 +154,31 @@ export default function WeightTrackerPage() {
     else setLogs([])
   }
 
-  // --- LOGIC INPUT LOG ---
+  // --- 3. HANDLE ADD LOG ---
   const handleAddLog = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedData) return
     setIsLogLoading(true)
 
-    // Susun Nama: "Row (Cable, High, Single, Left)"
     let details = []
     if (formType) details.push(formType)
     if (formGrip) details.push(formGrip)
     if (formMode) details.push(formMode)
-    
-    // Jika mode Single atau Lat Pulldown Single -> Wajib ada Side
-    if (formMode === 'Single' || formType === 'Single') {
-      if (formSide) details.push(formSide)
-    }
+    if ((formMode === 'Single' || formType === 'Single') && formSide) details.push(formSide)
 
     const fullName = details.length > 0 ? `${formMain} (${details.join(', ')})` : formMain
 
     const { error } = await supabase.from('weight_logs').insert([{
       schedule_id: selectedData.id,
       exercise_name: fullName,
-      weight_kg: parseFloat(formWeight),
-      reps: parseInt(formReps),
+      weight_kg: parseFloat(formWeight) || 0,
+      reps: parseInt(formReps) || 0,
       date: selectedData.schedule_date
     }])
 
     if (!error) {
-      setFormWeight('') // Kosongkan angka biar input set selanjutnya gampang
-      setFormReps('')
+      setFormWeight('') 
+      // Reps tidak di reset agar cepat kalau set berikutnya sama
       fetchLogs(selectedData.id)
     }
     setIsLogLoading(false)
@@ -150,26 +189,25 @@ export default function WeightTrackerPage() {
     if (selectedData) fetchLogs(selectedData.id)
   }
 
-  // --- HELPER OPTIONS ---
-  const currentGroupConfig = selectedData?.muscle_group ? EXERCISE_CONFIG[selectedData.muscle_group] : null
-  const exerciseList = currentGroupConfig ? Object.keys(currentGroupConfig) : []
-  const currentExDetail = (formMain && currentGroupConfig) ? currentGroupConfig[formMain] : null
+  // --- HELPERS ---
+  const exerciseList = Object.keys(combinedExercises).sort() // Urut abjad biar rapi
+  const currentExDetail = formMain ? combinedExercises[formMain] : null
   const showSideOption = formMode === 'Single' || formType === 'Single'
 
   if (!isAuthenticated) return <div className="min-h-screen bg-gray-950"></div>
 
   return (
-    <div className="text-white font-sans p-4 md:p-8">
+    <div className="text-white font-sans p-4 md:p-8 pb-24">
       
       {/* HEADER PAGE */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-yellow-500">Weight Tracker 🏋️</h1>
-          <p className="text-gray-400 text-sm">Pilih tanggal di kalender untuk isi log.</p>
+          <p className="text-gray-400 text-sm">Target otot ganda? Bisa!</p>
         </div>
         <div className="flex bg-gray-800 rounded-lg p-1">
           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-3 py-1 hover:bg-gray-700 rounded text-gray-400">◀</button>
-          <span className="px-3 py-1 text-sm font-bold">{format(currentDate, 'MMMM yyyy', { locale: id })}</span>
+          <span className="px-3 py-1 text-sm font-bold w-32 text-center">{format(currentDate, 'MMMM yyyy', { locale: id })}</span>
           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-3 py-1 hover:bg-gray-700 rounded text-gray-400">▶</button>
         </div>
       </div>
@@ -197,7 +235,7 @@ export default function WeightTrackerPage() {
         })}
       </div>
 
-      {/* MODAL INPUT LATIHAN (POPUP) */}
+      {/* MODAL INPUT LATIHAN */}
       {selectedDate && (
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedDate(null)}></div>
@@ -208,8 +246,14 @@ export default function WeightTrackerPage() {
             <div className="p-5 border-b border-gray-700 flex justify-between items-center bg-gray-900 rounded-t-3xl sticky top-0 z-20">
               <div>
                 <p className="text-gray-400 text-xs">{format(selectedDate, 'EEEE, d MMMM', { locale: id })}</p>
-                <h2 className="text-xl font-bold text-white">
-                  {selectedData ? selectedData.muscle_group : "Kosong"}
+                <h2 className="text-xl font-bold text-white flex gap-2 flex-wrap">
+                  {selectedData ? (
+                    targetMuscles.map(m => (
+                      <span key={m} className="bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded text-sm border border-yellow-500/30">
+                        {m}
+                      </span>
+                    ))
+                  ) : "Kosong"}
                 </h2>
               </div>
               <button onClick={() => setSelectedDate(null)} className="bg-gray-800 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-white">✕</button>
@@ -220,19 +264,18 @@ export default function WeightTrackerPage() {
               {selectedData ? (
                 selectedData.is_rest ? (
                   <div className="text-center py-10 text-green-400 bg-green-900/10 rounded-xl border border-green-900/30">
-                    <span className="text-4xl block mb-2">🛌</span>
-                    Rest Day
+                     Rest Day 🛌
                   </div>
                 ) : (
                   <>
-                    {/* FORM INPUT PINTAR */}
+                    {/* FORM INPUT */}
                     <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
                       <h3 className="text-xs font-bold text-yellow-400 mb-3 uppercase tracking-wider flex items-center gap-2">
                          📝 Catat Set Baru
                       </h3>
                       <form onSubmit={handleAddLog} className="space-y-3">
                         
-                        {/* 1. Pilih Gerakan */}
+                        {/* 1. Pilih Gerakan (GABUNGAN DARI SEMUA OTOT) */}
                         <select 
                           value={formMain} 
                           onChange={e => {
@@ -242,11 +285,11 @@ export default function WeightTrackerPage() {
                           className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-yellow-500 text-sm"
                           required
                         >
-                          <option value="">Pilih Latihan {selectedData.muscle_group}...</option>
+                          <option value="">Pilih Latihan ({targetMuscles.join(' + ')})...</option>
                           {exerciseList.map((ex: any) => <option key={ex} value={ex}>{ex}</option>)}
                         </select>
 
-                        {/* 2. Opsi Tambahan (Muncul Otomatis) */}
+                        {/* 2. Opsi Tambahan */}
                         {currentExDetail && (
                           <div className="grid grid-cols-2 gap-2 animate-in fade-in zoom-in-95 duration-200">
                             {currentExDetail.types?.length > 0 && (
@@ -267,12 +310,11 @@ export default function WeightTrackerPage() {
                                 {currentExDetail.modes.map((m: string) => <option key={m} value={m}>{m}</option>)}
                               </select>
                             )}
-                            {/* Side (Kiri/Kanan) */}
                             {showSideOption && (
                               <select value={formSide} onChange={e => setFormSide(e.target.value)} className="bg-yellow-900/20 border border-yellow-600 rounded-lg p-2 text-xs text-yellow-400 font-bold" required>
                                 <option value="">- Kiri / Kanan? -</option>
-                                <option value="Left">Kiri (Left)</option>
-                                <option value="Right">Kanan (Right)</option>
+                                <option value="Left">Kiri</option>
+                                <option value="Right">Kanan</option>
                               </select>
                             )}
                           </div>
@@ -326,8 +368,8 @@ export default function WeightTrackerPage() {
         </div>
       )}
 
-      {/* FAB (Floating Action Button) */}
-      <Link href="/new" className="fixed bottom-6 right-6 bg-yellow-500 text-black w-12 h-12 rounded-full shadow-lg shadow-yellow-500/30 flex items-center justify-center text-2xl font-bold hover:scale-110 transition-transform">
+      {/* FAB */}
+      <Link href="/new" className="fixed bottom-6 right-6 bg-yellow-500 text-black w-14 h-14 rounded-full shadow-lg shadow-yellow-500/30 flex items-center justify-center text-3xl font-bold hover:scale-110 transition-transform">
         +
       </Link>
     </div>
