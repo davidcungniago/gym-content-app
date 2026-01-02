@@ -5,8 +5,16 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 // Daftar Otot yang tersedia
+// Daftar Otot yang tersedia (Sudah dipisah)
 const MUSCLE_OPTIONS = [
-  'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Cardio / Abs'
+  'Chest', 
+  'Back', 
+  'Legs', 
+  'Shoulders', 
+  'Biceps', 
+  'Triceps', 
+  'Abs', 
+  'Cardio'
 ]
 
 export default function NewSchedulePage() {

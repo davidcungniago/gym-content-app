@@ -13,46 +13,62 @@ import { twMerge } from 'tailwind-merge'
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
 
-// --- CONFIG OPSI LATIHAN (LENGKAP) ---
-// Pastikan nama key di sini SAMA PERSIS dengan opsi di 'app/new/page.tsx'
+// --- CONFIG OPSI LATIHAN (UPDATED) ---
 const EXERCISE_CONFIG: any = {
-  'Back': {
-    'Row': { types: ['Cable', 'Machine'], grips: ['High', 'Width'], modes: ['Single', 'Double'] },
-    'Lat Pulldown': { types: ['Single', 'Bar'], grips: [], modes: [] }, 
-    'Rear Delt Fly': { types: ['Machine', 'Cable'], grips: [], modes: ['Single', 'Double'] },
-    'Deadlift': { types: ['Conventional', 'Sumo'], grips: [], modes: [] },
-    'Pull Up': { types: ['Bodyweight', 'Weighted'], grips: [], modes: [] }
-  },
   'Chest': {
     'Incline Press': { types: ['Machine', 'Smith', 'Dumbbell'], grips: [], modes: [] },
     'Chest Fly': { types: ['Machine', 'Cable'], grips: ['High', 'Low'], modes: [] },
     'Bench Press': { types: ['Barbell', 'Dumbbell', 'Smith'], grips: [], modes: [] },
-    'Push Up': { types: [], grips: [], modes: [] }
+    'Push Up': { types: [], grips: [], modes: [] },
+    'Dips': { types: ['Weighted', 'Bodyweight'], grips: [], modes: [] }
+  },
+  'Back': {
+    'Row': { types: ['Cable', 'Machine', 'Dumbbell', 'Barbell'], grips: ['High', 'Width'], modes: ['Single', 'Double'] },
+    'Lat Pulldown': { types: ['Single', 'Bar'], grips: ['Wide', 'Close', 'Reverse'], modes: [] }, 
+    'Rear Delt Fly': { types: ['Machine', 'Cable', 'Dumbbell'], grips: [], modes: ['Single', 'Double'] },
+    'Deadlift': { types: ['Conventional', 'Sumo', 'Trap Bar'], grips: [], modes: [] },
+    'Pull Up': { types: ['Bodyweight', 'Weighted', 'Assisted'], grips: [], modes: [] }
   },
   'Legs': {
-    'Squat': { types: ['Hack Squat', 'Free Weight', 'Goblet'], grips: [], modes: [] },
+    'Squat': { types: ['Hack Squat', 'Free Weight', 'Goblet', 'Smith'], grips: [], modes: [] },
     'Leg Press': { types: [], grips: [], modes: ['Single', 'Double'] },
     'Leg Extension': { types: [], grips: [], modes: ['Single', 'Double'] },
-    'Leg Curl': { types: [], grips: [], modes: ['Single', 'Double'] },
-    'Calf Raise': { types: ['Standing', 'Seated'], grips: [], modes: [] }
+    'Leg Curl': { types: ['Lying', 'Seated'], grips: [], modes: ['Single', 'Double'] },
+    'Calf Raise': { types: ['Standing', 'Seated', 'Smith'], grips: [], modes: [] },
+    'Lunges': { types: ['Dumbbell', 'Barbell', 'Walking'], grips: [], modes: [] }
   },
   'Shoulders': {
-    'Lateral Raise': { types: ['Machine', 'Cable', 'Free Weight'], grips: [], modes: ['Single', 'Double'] },
-    'Shoulder Press': { types: ['Machine', 'Free Weight', 'Smith'], grips: [], modes: [] },
-    'Front Raise': { types: ['Dumbbell', 'Cable'], grips: [], modes: [] }
+    'Lateral Raise': { types: ['Machine', 'Cable', 'Dumbbell'], grips: [], modes: ['Single', 'Double'] },
+    'Shoulder Press': { types: ['Machine', 'Dumbbell', 'Smith', 'Barbell'], grips: [], modes: [] },
+    'Front Raise': { types: ['Dumbbell', 'Cable', 'Plate'], grips: [], modes: [] },
+    'Face Pull': { types: ['Cable'], grips: [], modes: [] }
   },
-  'Arms': {
-    'Bicep Curl': { types: ['Free Weight', 'Cable'], grips: [], modes: ['Single', 'Double'] },
-    'Tricep Pushdown': { types: [], grips: [], modes: ['Single', 'Double'] },
-    'Preacher Curl': { types: ['Machine', 'Free Weight'], grips: [], modes: [] },
-    'Hammer Curl': { types: ['Dumbbell', 'Cable'], grips: [], modes: [] },
-    'Skullcrusher': { types: ['Barbell', 'Dumbbell'], grips: [], modes: [] }
+  'Biceps': {
+    'Bicep Curl': { types: ['Dumbbell', 'Barbell', 'Cable'], grips: [], modes: ['Single', 'Double'] },
+    'Preacher Curl': { types: ['Machine', 'EZ Bar', 'Dumbbell'], grips: [], modes: ['Single', 'Double'] },
+    'Hammer Curl': { types: ['Dumbbell', 'Cable'], grips: [], modes: ['Single', 'Double'] },
+    'Concentration Curl': { types: ['Dumbbell'], grips: [], modes: [] }
   },
-  'Cardio / Abs': {
-    'Treadmill': { types: [], grips: [], modes: [] },
+  'Triceps': {
+    'Tricep Pushdown': { types: ['Cable'], grips: ['Rope', 'Bar', 'V-Bar'], modes: ['Single', 'Double'] },
+    'Skullcrusher': { types: ['Barbell', 'Dumbbell', 'EZ Bar'], grips: [], modes: [] },
+    'Overhead Extension': { types: ['Dumbbell', 'Cable'], grips: [], modes: ['Single', 'Double'] },
+    'Dips': { types: ['Machine', 'Bench', 'Bodyweight'], grips: [], modes: [] }
+  },
+  'Abs': {
     'Plank': { types: [], grips: [], modes: [] },
-    'Crunches': { types: [], grips: [], modes: [] },
-    'Leg Raise': { types: [], grips: [], modes: [] }
+    'Crunches': { types: ['Machine', 'Mat', 'Cable'], grips: [], modes: [] },
+    'Leg Raise': { types: ['Hanging', 'Lying', 'Captain Chair'], grips: [], modes: [] },
+    'Russian Twist': { types: ['Weighted', 'Bodyweight'], grips: [], modes: [] },
+    'Ab Wheel': { types: [], grips: [], modes: [] }
+  },
+  'Cardio': {
+    'Treadmill': { types: ['Incline', 'Flat'], grips: [], modes: ['Walk', 'Run', 'Sprint'] },
+    'Static Bike': { types: [], grips: [], modes: [] },
+    'Elliptical': { types: [], grips: [], modes: [] },
+    'Running': { types: ['Outdoor', 'Track'], grips: [], modes: [] },
+    'Jump Rope': { types: [], grips: [], modes: [] },
+    'Swimming': { types: [], grips: [], modes: [] }
   }
 }
 
@@ -76,8 +92,10 @@ export default function WeightTrackerPage() {
   const [formGrip, setFormGrip] = useState('')
   const [formMode, setFormMode] = useState('')
   const [formSide, setFormSide] = useState('') 
+  
+  // Input Angka (Berat/Reps atau Durasi)
   const [formWeight, setFormWeight] = useState('')
-  const [formReps, setFormReps] = useState('')
+  const [formReps, setFormReps] = useState('') // Kita pakai field ini untuk 'Menit' kalau cardio
   
   const [isLogLoading, setIsLogLoading] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -112,15 +130,11 @@ export default function WeightTrackerPage() {
     setFormMain(''); setFormType(''); setFormGrip(''); setFormMode(''); setFormSide(''); setFormWeight(''); setFormReps('');
 
     if (data) {
-      // --- LOGIC PARSING MULTIPLE MUSCLES ---
       let parsedMuscles: string[] = []
-      
       try {
-        // Coba parse kalau formatnya JSON (misal: '["Back","Chest"]')
         if (data.muscle_group.startsWith('[')) {
           parsedMuscles = JSON.parse(data.muscle_group)
         } else {
-          // Kalau format lama (cuma string biasa "Back")
           parsedMuscles = [data.muscle_group]
         }
       } catch (e) {
@@ -129,8 +143,7 @@ export default function WeightTrackerPage() {
       
       setTargetMuscles(parsedMuscles)
 
-      // --- LOGIC MENGGABUNGKAN LATIHAN ---
-      // Kita loop semua otot yang dipilih, lalu gabungkan semua opsinya jadi satu list besar
+      // Gabungkan Latihan
       let mergedExercises: any = {}
       parsedMuscles.forEach(muscle => {
         const config = EXERCISE_CONFIG[muscle]
@@ -154,11 +167,21 @@ export default function WeightTrackerPage() {
     else setLogs([])
   }
 
+  // --- HELPERS DETEKSI CARDIO ---
+  // Cek apakah latihan yang dipilih sekarang adalah Cardio
+  const isCardioSelected = () => {
+    if (!formMain) return false
+    // Cek apakah nama latihan ada di dalam daftar Cardio
+    return Object.keys(EXERCISE_CONFIG['Cardio'] || {}).includes(formMain)
+  }
+
   // --- 3. HANDLE ADD LOG ---
   const handleAddLog = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedData) return
     setIsLogLoading(true)
+
+    const isCardio = isCardioSelected()
 
     let details = []
     if (formType) details.push(formType)
@@ -166,19 +189,26 @@ export default function WeightTrackerPage() {
     if (formMode) details.push(formMode)
     if ((formMode === 'Single' || formType === 'Single') && formSide) details.push(formSide)
 
+    // Jika Cardio, format namanya beda sedikit biar enak dibaca
     const fullName = details.length > 0 ? `${formMain} (${details.join(', ')})` : formMain
+
+    // LOGIC PENYIMPANAN:
+    // Jika Cardio: Berat = 0 (atau distance kalau mau), Reps = Durasi (Menit)
+    // Jika Normal: Berat = Berat, Reps = Reps
+    const weightToSave = isCardio ? 0 : (parseFloat(formWeight) || 0)
+    const repsToSave = isCardio ? (parseInt(formReps) || 0) : (parseInt(formReps) || 0)
 
     const { error } = await supabase.from('weight_logs').insert([{
       schedule_id: selectedData.id,
       exercise_name: fullName,
-      weight_kg: parseFloat(formWeight) || 0,
-      reps: parseInt(formReps) || 0,
+      weight_kg: weightToSave,
+      reps: repsToSave, 
       date: selectedData.schedule_date
     }])
 
     if (!error) {
-      setFormWeight('') 
-      // Reps tidak di reset agar cepat kalau set berikutnya sama
+      if (!isCardio) setFormWeight('') // Reset berat kalau bukan cardio
+      if (isCardio) setFormReps('')   // Reset menit kalau cardio
       fetchLogs(selectedData.id)
     }
     setIsLogLoading(false)
@@ -189,10 +219,11 @@ export default function WeightTrackerPage() {
     if (selectedData) fetchLogs(selectedData.id)
   }
 
-  // --- HELPERS ---
-  const exerciseList = Object.keys(combinedExercises).sort() // Urut abjad biar rapi
+  // --- RENDER HELPERS ---
+  const exerciseList = Object.keys(combinedExercises).sort()
   const currentExDetail = formMain ? combinedExercises[formMain] : null
   const showSideOption = formMode === 'Single' || formType === 'Single'
+  const isCardioMode = isCardioSelected()
 
   if (!isAuthenticated) return <div className="min-h-screen bg-gray-950"></div>
 
@@ -203,7 +234,7 @@ export default function WeightTrackerPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-yellow-500">Weight Tracker 🏋️</h1>
-          <p className="text-gray-400 text-sm">Target otot ganda? Bisa!</p>
+          <p className="text-gray-400 text-sm">Monitor progress setiap sesi</p>
         </div>
         <div className="flex bg-gray-800 rounded-lg p-1">
           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-3 py-1 hover:bg-gray-700 rounded text-gray-400">◀</button>
@@ -271,11 +302,11 @@ export default function WeightTrackerPage() {
                     {/* FORM INPUT */}
                     <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
                       <h3 className="text-xs font-bold text-yellow-400 mb-3 uppercase tracking-wider flex items-center gap-2">
-                         📝 Catat Set Baru
+                         📝 Catat Progress
                       </h3>
                       <form onSubmit={handleAddLog} className="space-y-3">
                         
-                        {/* 1. Pilih Gerakan (GABUNGAN DARI SEMUA OTOT) */}
+                        {/* 1. Pilih Gerakan */}
                         <select 
                           value={formMain} 
                           onChange={e => {
@@ -289,12 +320,12 @@ export default function WeightTrackerPage() {
                           {exerciseList.map((ex: any) => <option key={ex} value={ex}>{ex}</option>)}
                         </select>
 
-                        {/* 2. Opsi Tambahan */}
+                        {/* 2. Opsi Tambahan (Muncul jika ada) */}
                         {currentExDetail && (
                           <div className="grid grid-cols-2 gap-2 animate-in fade-in zoom-in-95 duration-200">
                             {currentExDetail.types?.length > 0 && (
                               <select value={formType} onChange={e => setFormType(e.target.value)} className="bg-gray-950 border border-gray-700 rounded-lg p-2 text-xs" required>
-                                <option value="">- Alat -</option>
+                                <option value="">- Tipe -</option>
                                 {currentExDetail.types.map((t: string) => <option key={t} value={t}>{t}</option>)}
                               </select>
                             )}
@@ -320,17 +351,37 @@ export default function WeightTrackerPage() {
                           </div>
                         )}
 
-                        {/* 3. Berat & Reps */}
+                        {/* 3. INPUT UTAMA (BERAT/REPS atau DURASI) */}
                         <div className="flex gap-2">
-                          <div className="relative flex-1">
-                             <input type="number" placeholder="0" value={formWeight} onChange={e => setFormWeight(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-center text-sm" required />
-                             <span className="absolute right-2 top-3 text-[10px] text-gray-500">KG</span>
-                          </div>
-                          <div className="relative flex-1">
-                             <input type="number" placeholder="0" value={formReps} onChange={e => setFormReps(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-center text-sm" required />
-                             <span className="absolute right-2 top-3 text-[10px] text-gray-500">REP</span>
-                          </div>
-                          <button type="submit" disabled={isLogLoading} className="bg-yellow-500 text-black font-bold px-4 rounded-lg hover:bg-yellow-400 text-lg">
+                          
+                          {/* JIKA CARDIO: HANYA DURASI */}
+                          {isCardioMode ? (
+                             <div className="relative flex-1 animate-in fade-in slide-in-from-left-2">
+                               <input 
+                                  type="number" 
+                                  placeholder="0" 
+                                  value={formReps} 
+                                  onChange={e => setFormReps(e.target.value)} 
+                                  className="w-full bg-gray-950 border border-blue-500 rounded-lg p-3 text-center text-sm focus:ring-1 focus:ring-blue-500" 
+                                  required 
+                               />
+                               <span className="absolute right-3 top-3 text-[10px] text-blue-400 font-bold uppercase">MENIT ⏱️</span>
+                            </div>
+                          ) : (
+                            /* JIKA NORMAL: BERAT + REPS */
+                            <>
+                              <div className="relative flex-1">
+                                 <input type="number" placeholder="0" value={formWeight} onChange={e => setFormWeight(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-center text-sm" required />
+                                 <span className="absolute right-2 top-3 text-[10px] text-gray-500">KG</span>
+                              </div>
+                              <div className="relative flex-1">
+                                 <input type="number" placeholder="0" value={formReps} onChange={e => setFormReps(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-center text-sm" required />
+                                 <span className="absolute right-2 top-3 text-[10px] text-gray-500">REP</span>
+                              </div>
+                            </>
+                          )}
+
+                          <button type="submit" disabled={isLogLoading} className={`font-bold px-4 rounded-lg hover:brightness-110 text-lg transition-colors ${isCardioMode ? 'bg-blue-600 text-white' : 'bg-yellow-500 text-black'}`}>
                             {isLogLoading ? '...' : '+'}
                           </button>
                         </div>
@@ -340,17 +391,27 @@ export default function WeightTrackerPage() {
                     {/* LIST LOGS */}
                     <div className="space-y-2">
                       <h3 className="text-xs text-gray-500 font-bold uppercase">Riwayat Hari Ini</h3>
-                      {logs.map((log) => (
-                        <div key={log.id} className="flex justify-between items-center bg-gray-800 p-3 rounded-lg border border-gray-700 group hover:border-gray-600">
-                          <div>
-                            <div className="font-bold text-sm text-white">{log.exercise_name}</div>
-                            <div className="text-xs text-gray-400 mt-0.5">
-                                <span className="text-yellow-500 font-bold">{log.weight_kg}kg</span> x {log.reps} reps
+                      {logs.map((log) => {
+                        // Cek sederhana apakah ini cardio log (biasanya beratnya 0 dan repsnya > 0 tapi bukan bodyweight normal)
+                        // Tapi kita pakai nama latihan aja buat mastiin warnanya
+                        const isLogCardio = Object.keys(EXERCISE_CONFIG['Cardio'] || {}).includes(log.exercise_name.split(' (')[0])
+                        
+                        return (
+                          <div key={log.id} className="flex justify-between items-center bg-gray-800 p-3 rounded-lg border border-gray-700 group hover:border-gray-600">
+                            <div>
+                              <div className="font-bold text-sm text-white">{log.exercise_name}</div>
+                              <div className="text-xs text-gray-400 mt-0.5">
+                                  {isLogCardio ? (
+                                    <span className="text-blue-400 font-bold">⏱️ {log.reps} Menit</span>
+                                  ) : (
+                                    <><span className="text-yellow-500 font-bold">{log.weight_kg}kg</span> x {log.reps} reps</>
+                                  )}
+                              </div>
                             </div>
+                            <button onClick={() => handleDeleteLog(log.id)} className="text-gray-600 hover:text-red-400 px-2 opacity-50 group-hover:opacity-100">✕</button>
                           </div>
-                          <button onClick={() => handleDeleteLog(log.id)} className="text-gray-600 hover:text-red-400 px-2 opacity-50 group-hover:opacity-100">✕</button>
-                        </div>
-                      ))}
+                        )
+                      })}
                       {logs.length === 0 && <div className="text-center text-gray-600 text-xs italic py-4">Belum ada data latihan.</div>}
                     </div>
                   </>
