@@ -13,7 +13,9 @@ import { twMerge } from 'tailwind-merge'
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
 
-// --- CONFIG OPSI LATIHAN (UPDATED) ---
+// --- CONFIG ---
+const MUSCLE_OPTIONS = ['Chest', 'Back', 'Legs', 'Shoulders', 'Biceps', 'Triceps', 'Abs', 'Cardio']
+
 const EXERCISE_CONFIG: any = {
   'Chest': {
     'Incline Press': { types: ['Machine', 'Smith', 'Dumbbell'], grips: [], modes: [] },
@@ -82,20 +84,22 @@ export default function WeightTrackerPage() {
   const [selectedData, setSelectedData] = useState<any>(null)
   const [logs, setLogs] = useState<any[]>([])
   
-  // State Parsing Otot
+  // Logic Config Otot
   const [targetMuscles, setTargetMuscles] = useState<string[]>([])
   const [combinedExercises, setCombinedExercises] = useState<any>({})
 
-  // State Form Input
+  // Form Input
   const [formMain, setFormMain] = useState('')
   const [formType, setFormType] = useState('')
   const [formGrip, setFormGrip] = useState('')
   const [formMode, setFormMode] = useState('')
   const [formSide, setFormSide] = useState('') 
-  
-  // Input Angka (Berat/Reps atau Durasi)
   const [formWeight, setFormWeight] = useState('')
-  const [formReps, setFormReps] = useState('') // Kita pakai field ini untuk 'Menit' kalau cardio
+  const [formReps, setFormReps] = useState('') 
+  
+  // EDIT STATE
+  const [editingLogId, setEditingLogId] = useState<string | null>(null)
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false)
   
   const [isLogLoading, setIsLogLoading] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -120,39 +124,16 @@ export default function WeightTrackerPage() {
     if (data) setSchedules(data)
   }
 
-  // --- 2. HANDLE CLICK DATE ---
+  // --- 2. HANDLE DATE CLICK ---
   const onDateClick = (date: Date) => {
     const data = schedules.find(s => isSameDay(new Date(s.schedule_date), date))
     setSelectedDate(date)
     setSelectedData(data || null)
-    
-    // Reset Form
-    setFormMain(''); setFormType(''); setFormGrip(''); setFormMode(''); setFormSide(''); setFormWeight(''); setFormReps('');
+    setIsEditingSchedule(false) // Reset mode edit schedule
+    resetForm()
 
     if (data) {
-      let parsedMuscles: string[] = []
-      try {
-        if (data.muscle_group.startsWith('[')) {
-          parsedMuscles = JSON.parse(data.muscle_group)
-        } else {
-          parsedMuscles = [data.muscle_group]
-        }
-      } catch (e) {
-        parsedMuscles = [data.muscle_group]
-      }
-      
-      setTargetMuscles(parsedMuscles)
-
-      // Gabungkan Latihan
-      let mergedExercises: any = {}
-      parsedMuscles.forEach(muscle => {
-        const config = EXERCISE_CONFIG[muscle]
-        if (config) {
-          mergedExercises = { ...mergedExercises, ...config }
-        }
-      })
-      setCombinedExercises(mergedExercises)
-
+      parseAndSetMuscles(data.muscle_group)
       fetchLogs(data.id)
     } else {
       setLogs([])
@@ -161,22 +142,74 @@ export default function WeightTrackerPage() {
     }
   }
 
+  const parseAndSetMuscles = (muscleGroupString: string) => {
+    let parsedMuscles: string[] = []
+    try {
+      if (muscleGroupString.startsWith('[')) {
+        parsedMuscles = JSON.parse(muscleGroupString)
+      } else {
+        parsedMuscles = [muscleGroupString]
+      }
+    } catch (e) {
+      parsedMuscles = [muscleGroupString]
+    }
+    setTargetMuscles(parsedMuscles)
+    updateCombinedExercises(parsedMuscles)
+  }
+
+  const updateCombinedExercises = (muscles: string[]) => {
+    let mergedExercises: any = {}
+    muscles.forEach(muscle => {
+      const config = EXERCISE_CONFIG[muscle]
+      if (config) {
+        mergedExercises = { ...mergedExercises, ...config }
+      }
+    })
+    setCombinedExercises(mergedExercises)
+  }
+
   const fetchLogs = async (scheduleId: string) => {
     const { data } = await supabase.from('weight_logs').select('*').eq('schedule_id', scheduleId).order('created_at', { ascending: true })
     if (data) setLogs(data)
     else setLogs([])
   }
 
-  // --- HELPERS DETEKSI CARDIO ---
-  // Cek apakah latihan yang dipilih sekarang adalah Cardio
+  const resetForm = () => {
+    setFormMain(''); setFormType(''); setFormGrip(''); setFormMode(''); setFormSide(''); setFormWeight(''); setFormReps('');
+    setEditingLogId(null)
+  }
+
+  // --- 3. EDIT SCHEDULE LOGIC ---
+  const toggleMuscleSelection = (muscle: string) => {
+    if (targetMuscles.includes(muscle)) {
+      setTargetMuscles(prev => prev.filter(m => m !== muscle))
+    } else {
+      setTargetMuscles(prev => [...prev, muscle])
+    }
+  }
+
+  const saveScheduleUpdate = async () => {
+    if (!selectedData) return
+    const newMusclesString = JSON.stringify(targetMuscles)
+    
+    const { error } = await supabase.from('content_schedule')
+      .update({ muscle_group: newMusclesString })
+      .eq('id', selectedData.id)
+
+    if (!error) {
+      setIsEditingSchedule(false)
+      updateCombinedExercises(targetMuscles)
+      fetchSchedules() // Refresh calendar
+    }
+  }
+
+  // --- 4. LOG LOGIC (ADD & UPDATE) ---
   const isCardioSelected = () => {
     if (!formMain) return false
-    // Cek apakah nama latihan ada di dalam daftar Cardio
     return Object.keys(EXERCISE_CONFIG['Cardio'] || {}).includes(formMain)
   }
 
-  // --- 3. HANDLE ADD LOG ---
-  const handleAddLog = async (e: React.FormEvent) => {
+  const handleAddOrUpdateLog = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedData) return
     setIsLogLoading(true)
@@ -189,32 +222,76 @@ export default function WeightTrackerPage() {
     if (formMode) details.push(formMode)
     if ((formMode === 'Single' || formType === 'Single') && formSide) details.push(formSide)
 
-    // Jika Cardio, format namanya beda sedikit biar enak dibaca
     const fullName = details.length > 0 ? `${formMain} (${details.join(', ')})` : formMain
-
-    // LOGIC PENYIMPANAN:
-    // Jika Cardio: Berat = 0 (atau distance kalau mau), Reps = Durasi (Menit)
-    // Jika Normal: Berat = Berat, Reps = Reps
     const weightToSave = isCardio ? 0 : (parseFloat(formWeight) || 0)
-    const repsToSave = isCardio ? (parseInt(formReps) || 0) : (parseInt(formReps) || 0)
+    const repsToSave = parseInt(formReps) || 0
 
-    const { error } = await supabase.from('weight_logs').insert([{
+    const payload = {
       schedule_id: selectedData.id,
       exercise_name: fullName,
       weight_kg: weightToSave,
       reps: repsToSave, 
       date: selectedData.schedule_date
-    }])
+    }
+
+    let error;
+    if (editingLogId) {
+      // UPDATE MODE
+      const { error: err } = await supabase.from('weight_logs').update(payload).eq('id', editingLogId)
+      error = err
+    } else {
+      // CREATE MODE
+      const { error: err } = await supabase.from('weight_logs').insert([payload])
+      error = err
+    }
 
     if (!error) {
-      if (!isCardio) setFormWeight('') // Reset berat kalau bukan cardio
-      if (isCardio) setFormReps('')   // Reset menit kalau cardio
+      resetForm()
       fetchLogs(selectedData.id)
     }
     setIsLogLoading(false)
   }
 
+  const handleEditLogClick = (log: any) => {
+    setEditingLogId(log.id)
+    
+    // Parse Name & Details: "Lat Pulldown (Wide, Single)"
+    const parts = log.exercise_name.split(' (')
+    const mainName = parts[0]
+    setFormMain(mainName)
+
+    // Reset details first
+    setFormType(''); setFormGrip(''); setFormMode(''); setFormSide('');
+
+    if (parts.length > 1) {
+      const detailsString = parts[1].replace(')', '')
+      const detailsArray = detailsString.split(', ')
+      
+      // Try to map details back to states (simple heuristic)
+      const config = combinedExercises[mainName]
+      if (config) {
+        detailsArray.forEach((d: string) => {
+          if (config.types?.includes(d)) setFormType(d)
+          if (config.grips?.includes(d)) setFormGrip(d)
+          if (config.modes?.includes(d)) setFormMode(d)
+          if (d === 'Left' || d === 'Right') setFormSide(d)
+        })
+      }
+    }
+
+    // Set Weight/Reps
+    const isCardio = Object.keys(EXERCISE_CONFIG['Cardio'] || {}).includes(mainName)
+    if (isCardio) {
+       setFormReps(log.reps.toString()) // Duration
+       setFormWeight('')
+    } else {
+       setFormWeight(log.weight_kg.toString())
+       setFormReps(log.reps.toString())
+    }
+  }
+
   const handleDeleteLog = async (id: string) => {
+    if(!confirm("Hapus set ini?")) return
     await supabase.from('weight_logs').delete().eq('id', id)
     if (selectedData) fetchLogs(selectedData.id)
   }
@@ -229,37 +306,33 @@ export default function WeightTrackerPage() {
 
   return (
     <div className="text-white font-sans p-4 md:p-8 pb-24">
-      
       {/* HEADER PAGE */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-yellow-500">Weight Tracker 🏋️</h1>
-          <p className="text-gray-400 text-sm">Monitor progress setiap sesi</p>
         </div>
         <div className="flex bg-gray-800 rounded-lg p-1">
-          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-3 py-1 hover:bg-gray-700 rounded text-gray-400">◀</button>
-          <span className="px-3 py-1 text-sm font-bold w-32 text-center">{format(currentDate, 'MMMM yyyy', { locale: id })}</span>
-          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-3 py-1 hover:bg-gray-700 rounded text-gray-400">▶</button>
+           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-3 py-1 hover:bg-gray-700 rounded text-gray-400">◀</button>
+           <span className="px-3 py-1 text-sm font-bold w-24 sm:w-32 text-center">{format(currentDate, 'MMM yyyy', { locale: id })}</span>
+           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-3 py-1 hover:bg-gray-700 rounded text-gray-400">▶</button>
         </div>
       </div>
 
       {/* GRID KALENDER */}
-      <div className="grid grid-cols-7 gap-2 mb-8">
+      <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-8">
         {['M','S','S','R','K','J','S'].map(d => <div key={d} className="text-center text-gray-500 text-xs font-bold py-2">{d}</div>)}
-        
         {Array.from({ length: getDay(startOfMonth(currentDate)) }).map((_, i) => <div key={`empty-${i}`} />)}
-        
         {eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }).map((date) => {
           const dayData = schedules.find(s => isSameDay(new Date(s.schedule_date), date))
           return (
             <div key={date.toString()} onClick={() => onDateClick(date)}
               className={cn(
-                "aspect-square rounded-xl border flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all relative group",
+                "aspect-square rounded-lg sm:rounded-xl border flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all relative group",
                 dayData ? (dayData.is_rest ? "bg-green-900/20 border-green-800" : "bg-yellow-900/20 border-yellow-700") : "bg-gray-900 border-gray-800 hover:bg-gray-800",
                 isToday(date) && "ring-2 ring-white"
               )}
             >
-              <span className="text-sm font-bold z-10 group-hover:scale-110 transition-transform">{format(date, 'd')}</span>
+              <span className="text-sm font-bold z-10">{format(date, 'd')}</span>
               {dayData && !dayData.is_rest && <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-1"></div>}
             </div>
           )
@@ -274,20 +347,64 @@ export default function WeightTrackerPage() {
           <div className="bg-gray-900 w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-gray-800 shadow-2xl relative z-10 flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-10">
             
             {/* Header Modal */}
-            <div className="p-5 border-b border-gray-700 flex justify-between items-center bg-gray-900 rounded-t-3xl sticky top-0 z-20">
-              <div>
-                <p className="text-gray-400 text-xs">{format(selectedDate, 'EEEE, d MMMM', { locale: id })}</p>
-                <h2 className="text-xl font-bold text-white flex gap-2 flex-wrap">
-                  {selectedData ? (
-                    targetMuscles.map(m => (
-                      <span key={m} className="bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded text-sm border border-yellow-500/30">
-                        {m}
-                      </span>
-                    ))
-                  ) : "Kosong"}
-                </h2>
+            <div className="p-5 border-b border-gray-700 bg-gray-900 rounded-t-3xl sticky top-0 z-20">
+              <div className="flex justify-between items-start mb-2">
+                 <div>
+                    <p className="text-gray-400 text-xs">{format(selectedDate, 'EEEE, d MMMM', { locale: id })}</p>
+                    
+                    {/* List Otot Header */}
+                    <div className="flex items-center gap-2 mt-1">
+                      {selectedData && !isEditingSchedule ? (
+                        <>
+                          <h2 className="text-xl font-bold text-white flex gap-2 flex-wrap">
+                            {targetMuscles.map(m => (
+                              <span key={m} className="bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded text-sm border border-yellow-500/30">
+                                {m}
+                              </span>
+                            ))}
+                          </h2>
+                          {!selectedData.is_rest && (
+                            <button onClick={() => setIsEditingSchedule(true)} className="text-gray-500 hover:text-white transition-colors">
+                              ✏️
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                         <h2 className="text-xl font-bold text-white">
+                           {selectedData?.is_rest ? "Rest Day 🛌" : "Jadwal Baru"}
+                         </h2>
+                      )}
+                    </div>
+                 </div>
+                 <button onClick={() => setSelectedDate(null)} className="bg-gray-800 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-white">✕</button>
               </div>
-              <button onClick={() => setSelectedDate(null)} className="bg-gray-800 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-white">✕</button>
+
+              {/* EDITOR JADWAL OTOT */}
+              {isEditingSchedule && (
+                <div className="mt-4 bg-gray-800/50 p-3 rounded-xl border border-dashed border-gray-600 animate-in fade-in zoom-in-95">
+                  <p className="text-xs text-gray-400 mb-2 font-bold uppercase">Edit Target Otot:</p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {MUSCLE_OPTIONS.map(opt => (
+                      <button 
+                        key={opt}
+                        onClick={() => toggleMuscleSelection(opt)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                          targetMuscles.includes(opt) 
+                            ? "bg-yellow-500 text-black border-yellow-500" 
+                            : "bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500"
+                        )}
+                      >
+                        {opt} {targetMuscles.includes(opt) && "✓"}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex justify-end gap-2">
+                     <button onClick={() => setIsEditingSchedule(false)} className="text-xs text-gray-400 hover:text-white px-3 py-1">Batal</button>
+                     <button onClick={saveScheduleUpdate} className="text-xs bg-blue-600 text-white px-3 py-1 rounded font-bold hover:bg-blue-500">Simpan Perubahan</button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Isi Modal */}
@@ -295,18 +412,20 @@ export default function WeightTrackerPage() {
               {selectedData ? (
                 selectedData.is_rest ? (
                   <div className="text-center py-10 text-green-400 bg-green-900/10 rounded-xl border border-green-900/30">
-                     Rest Day 🛌
+                     Enjoy your recovery! 🌱
                   </div>
                 ) : (
                   <>
                     {/* FORM INPUT */}
-                    <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
-                      <h3 className="text-xs font-bold text-yellow-400 mb-3 uppercase tracking-wider flex items-center gap-2">
-                         📝 Catat Progress
-                      </h3>
-                      <form onSubmit={handleAddLog} className="space-y-3">
-                        
-                        {/* 1. Pilih Gerakan */}
+                    <div className={cn("bg-gray-800/50 p-4 rounded-xl border", editingLogId ? "border-blue-500/50 bg-blue-900/10" : "border-gray-700")}>
+                      <div className="flex justify-between items-center mb-3">
+                         <h3 className={cn("text-xs font-bold uppercase tracking-wider flex items-center gap-2", editingLogId ? "text-blue-400" : "text-yellow-400")}>
+                            {editingLogId ? "✏️ Edit Set Latihan" : "📝 Catat Progress"}
+                         </h3>
+                         {editingLogId && <button onClick={resetForm} className="text-xs text-gray-400 underline">Batal Edit</button>}
+                      </div>
+
+                      <form onSubmit={handleAddOrUpdateLog} className="space-y-3">
                         <select 
                           value={formMain} 
                           onChange={e => {
@@ -320,7 +439,6 @@ export default function WeightTrackerPage() {
                           {exerciseList.map((ex: any) => <option key={ex} value={ex}>{ex}</option>)}
                         </select>
 
-                        {/* 2. Opsi Tambahan (Muncul jika ada) */}
                         {currentExDetail && (
                           <div className="grid grid-cols-2 gap-2 animate-in fade-in zoom-in-95 duration-200">
                             {currentExDetail.types?.length > 0 && (
@@ -343,7 +461,7 @@ export default function WeightTrackerPage() {
                             )}
                             {showSideOption && (
                               <select value={formSide} onChange={e => setFormSide(e.target.value)} className="bg-yellow-900/20 border border-yellow-600 rounded-lg p-2 text-xs text-yellow-400 font-bold" required>
-                                <option value="">- Kiri / Kanan? -</option>
+                                <option value="">- Sisi -</option>
                                 <option value="Left">Kiri</option>
                                 <option value="Right">Kanan</option>
                               </select>
@@ -351,40 +469,35 @@ export default function WeightTrackerPage() {
                           </div>
                         )}
 
-                        {/* 3. INPUT UTAMA (BERAT/REPS atau DURASI) */}
-                        <div className="flex gap-2">
-                          
-                          {/* JIKA CARDIO: HANYA DURASI */}
-                          {isCardioMode ? (
-                             <div className="relative flex-1 animate-in fade-in slide-in-from-left-2">
+                        {/* INPUT BERAT & REPS (GRID LAYOUT FIX) */}
+                        {isCardioMode ? (
+                           <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+                             <div className="relative">
                                <input 
-                                  type="number" 
-                                  placeholder="0" 
-                                  value={formReps} 
-                                  onChange={e => setFormReps(e.target.value)} 
-                                  className="w-full bg-gray-950 border border-blue-500 rounded-lg p-3 text-center text-sm focus:ring-1 focus:ring-blue-500" 
-                                  required 
+                                  type="number" placeholder="0" value={formReps} onChange={e => setFormReps(e.target.value)} 
+                                  className="w-full bg-gray-950 border border-blue-500 rounded-lg p-3 text-center text-sm font-bold focus:ring-1 focus:ring-blue-500" required 
                                />
-                               <span className="absolute right-3 top-3 text-[10px] text-blue-400 font-bold uppercase">MENIT ⏱️</span>
-                            </div>
-                          ) : (
-                            /* JIKA NORMAL: BERAT + REPS */
-                            <>
-                              <div className="relative flex-1">
-                                 <input type="number" placeholder="0" value={formWeight} onChange={e => setFormWeight(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-center text-sm" required />
-                                 <span className="absolute right-2 top-3 text-[10px] text-gray-500">KG</span>
-                              </div>
-                              <div className="relative flex-1">
-                                 <input type="number" placeholder="0" value={formReps} onChange={e => setFormReps(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-center text-sm" required />
-                                 <span className="absolute right-2 top-3 text-[10px] text-gray-500">REP</span>
-                              </div>
-                            </>
-                          )}
-
-                          <button type="submit" disabled={isLogLoading} className={`font-bold px-4 rounded-lg hover:brightness-110 text-lg transition-colors ${isCardioMode ? 'bg-blue-600 text-white' : 'bg-yellow-500 text-black'}`}>
-                            {isLogLoading ? '...' : '+'}
-                          </button>
-                        </div>
+                               <span className="absolute right-3 top-3 text-[10px] text-blue-400 font-bold">MENIT</span>
+                             </div>
+                             <button type="submit" disabled={isLogLoading} className="h-11 px-5 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 flex items-center justify-center">
+                               {editingLogId ? 'Update' : '+'}
+                             </button>
+                           </div>
+                        ) : (
+                          <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                             <div className="relative w-full">
+                                <input type="number" placeholder="0" value={formWeight} onChange={e => setFormWeight(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-center text-sm font-bold" required />
+                                <span className="absolute right-2 top-3 text-[10px] text-gray-500">KG</span>
+                             </div>
+                             <div className="relative w-full">
+                                <input type="number" placeholder="0" value={formReps} onChange={e => setFormReps(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-center text-sm font-bold" required />
+                                <span className="absolute right-2 top-3 text-[10px] text-gray-500">REP</span>
+                             </div>
+                             <button type="submit" disabled={isLogLoading} className={cn("h-11 px-4 rounded-lg font-bold text-black flex items-center justify-center min-w-[50px]", editingLogId ? "bg-blue-500 text-white" : "bg-yellow-500")}>
+                               {editingLogId ? '✓' : '+'}
+                             </button>
+                          </div>
+                        )}
                       </form>
                     </div>
 
@@ -392,12 +505,11 @@ export default function WeightTrackerPage() {
                     <div className="space-y-2">
                       <h3 className="text-xs text-gray-500 font-bold uppercase">Riwayat Hari Ini</h3>
                       {logs.map((log) => {
-                        // Cek sederhana apakah ini cardio log (biasanya beratnya 0 dan repsnya > 0 tapi bukan bodyweight normal)
-                        // Tapi kita pakai nama latihan aja buat mastiin warnanya
                         const isLogCardio = Object.keys(EXERCISE_CONFIG['Cardio'] || {}).includes(log.exercise_name.split(' (')[0])
+                        const isBeingEdited = log.id === editingLogId
                         
                         return (
-                          <div key={log.id} className="flex justify-between items-center bg-gray-800 p-3 rounded-lg border border-gray-700 group hover:border-gray-600">
+                          <div key={log.id} className={cn("flex justify-between items-center p-3 rounded-lg border transition-all", isBeingEdited ? "bg-blue-900/20 border-blue-500" : "bg-gray-800 border-gray-700 hover:border-gray-600")}>
                             <div>
                               <div className="font-bold text-sm text-white">{log.exercise_name}</div>
                               <div className="text-xs text-gray-400 mt-0.5">
@@ -408,7 +520,14 @@ export default function WeightTrackerPage() {
                                   )}
                               </div>
                             </div>
-                            <button onClick={() => handleDeleteLog(log.id)} className="text-gray-600 hover:text-red-400 px-2 opacity-50 group-hover:opacity-100">✕</button>
+                            <div className="flex gap-1">
+                               <button onClick={() => handleEditLogClick(log)} className="w-8 h-8 rounded flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700">
+                                 ✏️
+                               </button>
+                               <button onClick={() => handleDeleteLog(log.id)} className="w-8 h-8 rounded flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-gray-700">
+                                 ✕
+                               </button>
+                            </div>
                           </div>
                         )
                       })}
