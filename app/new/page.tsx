@@ -100,7 +100,16 @@ export default function NewWorkoutPage() {
   }
 
   const checkExistingSchedule = async (selectedDate: string) => {
-    const { data } = await supabase.from('content_schedule').select('*').eq('schedule_date', selectedDate).single()
+    // Reset state saat ganti tanggal agar tidak nyampur
+    setScheduleId(null)
+    setLogs([])
+
+    const { data } = await supabase
+      .from('content_schedule')
+      .select('*')
+      .eq('schedule_date', selectedDate)
+      .maybeSingle() // Gunakan maybeSingle biar aman kalau data null
+
     if (data) {
       setScheduleId(data.id)
       setIsRest(data.is_rest)
@@ -111,9 +120,7 @@ export default function NewWorkoutPage() {
       }
       fetchLogs(data.id)
     } else {
-      setScheduleId(null)
       setMuscles([])
-      setLogs([])
       setIsRest(false)
     }
   }
@@ -133,10 +140,25 @@ export default function NewWorkoutPage() {
     else setMuscles([...muscles, m])
   }
 
-  // --- LOGIC UTAMA: CREATE / UPDATE SCHEDULE ---
+  // --- LOGIC UTAMA: CREATE / UPDATE SCHEDULE (PERBAIKAN DISINI) ---
   const ensureSchedule = async () => {
+    // 1. Jika ID sudah ada di state, pakai itu
     if (scheduleId) return scheduleId
 
+    // 2. CEK LAGI KE DATABASE (Double Check)
+    // Supaya tidak error duplikat jika ternyata data sudah dibuat di sesi lain/tab lain
+    const { data: existing } = await supabase
+      .from('content_schedule')
+      .select('id')
+      .eq('schedule_date', date)
+      .maybeSingle()
+
+    if (existing) {
+      setScheduleId(existing.id)
+      return existing.id
+    }
+
+    // 3. Jika benar-benar kosong, baru INSERT
     const { data, error } = await supabase.from('content_schedule').insert([{
       schedule_date: date,
       muscle_group: JSON.stringify(isRest ? ['Rest'] : muscles),
@@ -145,9 +167,12 @@ export default function NewWorkoutPage() {
     }]).select().single()
 
     if (error) {
-      alert('Gagal buat jadwal')
+      console.error(error)
+      // Tampilkan error aslinya agar tahu kenapa (misal: RLS policy)
+      alert(`Gagal menyimpan jadwal: ${error.message}`) 
       return null
     }
+    
     setScheduleId(data.id)
     return data.id
   }
@@ -156,6 +181,8 @@ export default function NewWorkoutPage() {
   const handleAddLog = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    
+    // Pastikan jadwal ada dulu
     const activeId = await ensureSchedule()
     
     if (!activeId) {
@@ -173,7 +200,7 @@ export default function NewWorkoutPage() {
     if (formMode) details.push(formMode)
     if ((formMode === 'Single' || formType === 'Single') && formSide) details.push(formSide)
     
-    // Jika Cardio, tambahkan info Metric (Speed/Pace) ke nama agar tersimpan
+    // Jika Cardio, tambahkan info Metric (Speed/Pace)
     if (isCardioLog) {
       details.push(cardioMetric) 
     }
@@ -186,13 +213,15 @@ export default function NewWorkoutPage() {
     const { error } = await supabase.from('weight_logs').insert([{
       schedule_id: activeId,
       exercise_name: fullName,
-      weight_kg: valWeight, // Disini kita simpan Speed/Pace/Berat
-      reps: valReps,        // Disini kita simpan Menit/Reps
+      weight_kg: valWeight, 
+      reps: valReps,       
       date: date
     }])
 
-    if (!error) {
-      // Reset Form Partial (Keep formMain & Metric for ease of use)
+    if (error) {
+      alert("Gagal simpan set: " + error.message)
+    } else {
+      // Reset Form Partial
       setFormType(''); setFormGrip(''); setFormMode(''); setFormSide(''); 
       setFormWeight('');
       fetchLogs(activeId)
@@ -221,7 +250,6 @@ export default function NewWorkoutPage() {
   const currentDetail = formMain ? exerciseOptions[formMain] : null
   const showSideOption = formMode === 'Single' || formType === 'Single'
   
-  // Cek apakah yang dipilih adalah Cardio
   const isCardio = Object.keys(EXERCISE_CONFIG['Cardio']).includes(formMain)
 
   return (
