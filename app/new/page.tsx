@@ -163,7 +163,6 @@ export default function NewWorkoutPage() {
       schedule_date: date,
       muscle_group: JSON.stringify(isRest ? ['Rest'] : muscles),
       is_rest: isRest,
-      notes: ''
     }]).select().single()
 
     if (error) {
